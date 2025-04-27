@@ -1,6 +1,7 @@
+# types.py
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 
 # Placeholder for TimeStepGenConfig (import this or define it as needed)
@@ -137,6 +138,7 @@ class CompDataI(BaseModel):
     connectors: List[ConnectorData]
     Runners: List[RunnerFn]
     GenData: Optional[DataGenerator] = None
+    Yieldable: Optional[bool] = None
 
     def get_input_data(
         self, key: str
@@ -145,6 +147,18 @@ class CompDataI(BaseModel):
         Get input data by key.
         """
         return self.inputData.get(key)
+
+    def get_custom_input(self) -> Dict[str, Any]:
+        output_data = {}
+        if self.customInput:
+            for key, value in self.customInput.items():
+                output_data[value.inputName] = value.defaultValue
+
+        return output_data
+
+
+class ComponentStore(RootModel[Dict[str, CompDataI]]):
+    pass
 
 
 # -----------------------------
@@ -272,6 +286,8 @@ class GenTypes(BaseModel):
 class GenContainer(BaseModel):
     containerId: int
     Data: Dict[str, GenTypes]
+    targetComp: str | None
+    targetHandler: str | None
 
     def insert(self, genType: GenTypes) -> None:
         """
@@ -296,27 +312,29 @@ class GenContainer(BaseModel):
                 raise KeyError(f"GenType '{key}' already exists.")
             self.Data[key] = value
 
+    def set_next_target(self, comp: str, handler: str) -> None:
+        self.targetComp = comp
+        self.targetHandler = handler
+
 
 # -----------------------------
 # GenTypeState
 # -----------------------------
-class GenTypeState(BaseModel):
-    __root__: Dict[str, GenTypes]
-
+class GenTypeState(RootModel[Dict[str, GenTypes]]):
     def insert(self, genType: GenTypes) -> None:
         """
         Insert a new GenTypes instance.
         """
-        if genType.typeName in self.__root__:
+        if genType.typeName in self.root:
             raise KeyError(f"GenType '{genType.typeName}' already exists.")
-        self.__root__[genType.typeName] = genType
+        self.root[genType.typeName] = genType
 
     def delete(self, type_name: str) -> None:
         """
         Delete a GenTypes instance by typeName.
         """
-        if type_name in self.__root__:
-            del self.__root__[type_name]
+        if type_name in self.root:
+            del self.root[type_name]
         else:
             raise KeyError(f"GenType '{type_name}' not found.")
 
@@ -324,8 +342,8 @@ class GenTypeState(BaseModel):
         """
         Update the value of a specific attribute in a GenTypes instance.
         """
-        if type_name in self.__root__:
-            gen_type = self.__root__[type_name]
+        if type_name in self.root:
+            gen_type = self.root[type_name]
             gen_type.update_value(attr_name, new_value)
         else:
             raise KeyError(f"GenType '{type_name}' not found.")
@@ -334,10 +352,21 @@ class GenTypeState(BaseModel):
         """
         Check if the typeName and genComponentId match.
         """
-        if type_name in self.__root__:
-            existing_gen_type = self.__root__[type_name]
+        if type_name in self.root:
+            existing_gen_type = self.root[type_name]
             return (
                 existing_gen_type.typeName == type.typeName
                 and existing_gen_type.genComponentId == type.genComponentId
             )
         return False
+
+
+class Edge(BaseModel):
+    source: str
+    sourceHandle: str
+    target: str
+    targetHandle: str
+    id: str
+
+    class Config:
+        extra = "allow"  # Accept additional fields without error

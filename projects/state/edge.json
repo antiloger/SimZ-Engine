@@ -1,0 +1,16 @@
+[
+    {
+        "source": "3d3043e8-2a69-4cbd-a120-8c2e9ff1297a",
+        "sourceHandle": "14ba12e3-fa00-4ae1-b283-67633a5c4ae2-out",
+        "target": "2b324315-20e4-4819-a820-d8a0b25400e4",
+        "targetHandle": "example-type-in",
+        "id": "xy-edge__3d3043e8-2a69-4cbd-a120-8c2e9ff1297a14ba12e3-fa00-4ae1-b283-67633a5c4ae2-out-2b324315-20e4-4819-a820-d8a0b25400e4example-type-in"
+    },
+    {
+        "source": "2b324315-20e4-4819-a820-d8a0b25400e4",
+        "sourceHandle": "example-type-out",
+        "target": "4ba65bc8-6b18-4def-aeee-30ca72765317",
+        "targetHandle": "example-type-in",
+        "id": "xy-edge__2b324315-20e4-4819-a820-d8a0b25400e4example-type-out-4ba65bc8-6b18-4def-aeee-30ca72765317example-type-in"
+    }
+]

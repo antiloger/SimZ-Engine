@@ -1,0 +1,140 @@
+{
+  "3d3043e8-2a69-4cbd-a120-8c2e9ff1297a": {
+    "id": "3d3043e8-2a69-4cbd-a120-8c2e9ff1297a",
+    "compName": "gen",
+    "typeName": "DataGenerator",
+    "category": "generator",
+    "color": "#4CAF50",
+    "notification": [],
+    "inputData": {
+      "frequency": 60,
+      "dataType": "random",
+      "active": true,
+      "gen_count": 10
+    },
+    "customInput": {},
+    "connectors": [],
+    "Runners": [],
+    "GenData": {
+      "config": {
+        "genFn": "timestep",
+        "config": {
+          "intervalTime": 0,
+          "noItem": 0,
+          "isIntervalTimeRandom": false,
+          "IntervalTimeRandom": {
+            "from": 0,
+            "to": 0
+          },
+          "timePerNoItem": 0,
+          "isTimePerNoItemRandom": false,
+          "TimePerNoItemRandom": {
+            "from": 0,
+            "to": 0
+          }
+        }
+      },
+      "types": [
+        "14ba12e3-fa00-4ae1-b283-67633a5c4ae2"
+      ]
+    }
+  },
+  "2b324315-20e4-4819-a820-d8a0b25400e4": {
+    "id": "2b324315-20e4-4819-a820-d8a0b25400e4",
+    "compName": "res1",
+    "typeName": "DataDistributor",
+    "category": "resource",
+    "color": "#9C27B0",
+    "notification": [],
+    "inputData": {
+      "targets": [
+        "cloud",
+        "local"
+      ],
+      "capacity": 1
+    },
+    "customInput": {},
+    "connectors": [
+      {
+        "id": "c77a00d2-7f9e-4e23-acf4-974c3a934727",
+        "name": "example-type",
+        "type": [
+          "Example"
+        ],
+        "flow": "inout",
+        "validation": ""
+      }
+    ],
+    "Runners": [],
+    "GenData": {
+      "types": [],
+      "config": {
+        "genFn": "timestep",
+        "config": {
+          "intervalTime": 0,
+          "noItem": 0,
+          "isIntervalTimeRandom": false,
+          "IntervalTimeRandom": {
+            "from": 0,
+            "to": 0
+          },
+          "timePerNoItem": 0,
+          "isTimePerNoItemRandom": false,
+          "TimePerNoItemRandom": {
+            "from": 0,
+            "to": 0
+          }
+        }
+      }
+    }
+  },
+  "4ba65bc8-6b18-4def-aeee-30ca72765317": {
+    "id": "4ba65bc8-6b18-4def-aeee-30ca72765317",
+    "compName": "res2",
+    "typeName": "DataDistributor",
+    "category": "resource",
+    "color": "#9C27B0",
+    "notification": [],
+    "inputData": {
+      "targets": [
+        "cloud",
+        "local"
+      ],
+      "capacity": 1
+    },
+    "customInput": {},
+    "connectors": [
+      {
+        "id": "831f60f5-903e-47a6-bd3a-3d7218ef9f65",
+        "name": "example-type",
+        "type": [
+          "Example"
+        ],
+        "flow": "in",
+        "validation": ""
+      }
+    ],
+    "Runners": [],
+    "GenData": {
+      "types": [],
+      "config": {
+        "genFn": "timestep",
+        "config": {
+          "intervalTime": 0,
+          "noItem": 0,
+          "isIntervalTimeRandom": false,
+          "IntervalTimeRandom": {
+            "from": 0,
+            "to": 0
+          },
+          "timePerNoItem": 0,
+          "isTimePerNoItemRandom": false,
+          "TimePerNoItemRandom": {
+            "from": 0,
+            "to": 0
+          }
+        }
+      }
+    }
+  }
+}
