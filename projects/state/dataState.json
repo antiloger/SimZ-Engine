@@ -1,71 +1,43 @@
 {
-  "3d3043e8-2a69-4cbd-a120-8c2e9ff1297a": {
-    "id": "3d3043e8-2a69-4cbd-a120-8c2e9ff1297a",
-    "compName": "gen",
-    "typeName": "DataGenerator",
-    "category": "generator",
-    "color": "#4CAF50",
-    "notification": [],
-    "inputData": {
-      "frequency": 60,
-      "dataType": "random",
-      "active": true,
-      "gen_count": 10
-    },
-    "customInput": {},
-    "connectors": [],
-    "Runners": [],
-    "GenData": {
-      "config": {
-        "genFn": "timestep",
-        "config": {
-          "intervalTime": 0,
-          "noItem": 0,
-          "isIntervalTimeRandom": false,
-          "IntervalTimeRandom": {
-            "from": 0,
-            "to": 0
-          },
-          "timePerNoItem": 0,
-          "isTimePerNoItemRandom": false,
-          "TimePerNoItemRandom": {
-            "from": 0,
-            "to": 0
-          }
-        }
-      },
-      "types": [
-        "14ba12e3-fa00-4ae1-b283-67633a5c4ae2"
-      ]
-    }
-  },
-  "2b324315-20e4-4819-a820-d8a0b25400e4": {
-    "id": "2b324315-20e4-4819-a820-d8a0b25400e4",
-    "compName": "res1",
-    "typeName": "DataDistributor",
+  "84986f37-da38-4d45-83b1-ac900113f303": {
+    "id": "84986f37-da38-4d45-83b1-ac900113f303",
+    "compName": "res",
+    "typeName": "Resource",
     "category": "resource",
-    "color": "#9C27B0",
+    "color": "#d4a82f",
     "notification": [],
     "inputData": {
-      "targets": [
-        "cloud",
-        "local"
-      ],
-      "capacity": 1
+      "capacity": 1,
+      "default_timeout": 10
     },
-    "customInput": {},
+    "customInput": {
+      "hold_time": {
+        "inputName": "hold_time",
+        "fieldType": "number",
+        "description": "",
+        "required": false,
+        "id": "87889726-f129-4ccf-b370-cf1d2e87616f",
+        "visible": true,
+        "defaultValue": 4
+      }
+    },
     "connectors": [
       {
-        "id": "c77a00d2-7f9e-4e23-acf4-974c3a934727",
-        "name": "example-type",
+        "id": "b3e1e963-787f-4662-b49f-86694c1cf4e5",
+        "name": "water_conn",
         "type": [
-          "Example"
+          "Water"
         ],
         "flow": "inout",
         "validation": ""
       }
     ],
-    "Runners": [],
+    "Runners": {
+      "run": "\n# u must return input if not the resource process not gonna work\ndef main():\n    print(\"Running main application\")\n    \nif __name__ == \"__main__\":\n    main()",
+      "generator": "def generate_data():\n    print(\"Generating data...\")\n    return {\"status\": \"success\"}",
+      "model": "class Model:\n    def __init__(self):\n        self.name = \"Default Model\"\n        \n    def train(self, data):\n        print(f\"Training {self.name} with data\")\n        \n    def predict(self, input_data):\n        return \"Prediction result\"",
+      "event": "# Event handling functions\n\ndef process_event(event_data):\n    print(\"Processing event data\")\n    return event_data"
+    },
     "GenData": {
       "types": [],
       "config": {
@@ -88,33 +60,87 @@
       }
     }
   },
-  "4ba65bc8-6b18-4def-aeee-30ca72765317": {
-    "id": "4ba65bc8-6b18-4def-aeee-30ca72765317",
-    "compName": "res2",
-    "typeName": "DataDistributor",
-    "category": "resource",
+  "b59350a1-9ca8-4ab9-ae68-402099c69765": {
+    "id": "b59350a1-9ca8-4ab9-ae68-402099c69765",
+    "compName": "gen",
+    "typeName": "Generator",
+    "category": "generator",
     "color": "#9C27B0",
     "notification": [],
     "inputData": {
-      "targets": [
-        "cloud",
-        "local"
-      ],
-      "capacity": 1
+      "gen_count": 0
     },
     "customInput": {},
+    "connectors": [],
+    "Runners": {
+      "run": "\n# u must return input if not the resource process not gonna work\ndef main():\n    print(\"Running main application\")\n    \nif __name__ == \"__main__\":\n    main()",
+      "generator": "def generate_data():\n    print(\"Generating data...\")\n    return {\"status\": \"success\"}",
+      "model": "class Model:\n    def __init__(self):\n        self.name = \"Default Model\"\n        \n    def train(self, data):\n        print(f\"Training {self.name} with data\")\n        \n    def predict(self, input_data):\n        return \"Prediction result\"",
+      "event": "# Event handling functions\n\ndef process_event(event_data):\n    print(\"Processing event data\")\n    return event_data"
+    },
+    "GenData": {
+      "config": {
+        "genFn": "timestep",
+        "config": {
+          "intervalTime": 0,
+          "noItem": 0,
+          "isIntervalTimeRandom": false,
+          "IntervalTimeRandom": {
+            "from": 0,
+            "to": 0
+          },
+          "timePerNoItem": 0,
+          "isTimePerNoItemRandom": false,
+          "TimePerNoItemRandom": {
+            "from": 0,
+            "to": 0
+          }
+        }
+      },
+      "types": [
+        "77984a0e-c500-4b35-939c-14ad0ca0ec68"
+      ]
+    }
+  },
+  "c36c9056-68fc-49cf-8ef2-19aaa04a22c9": {
+    "id": "c36c9056-68fc-49cf-8ef2-19aaa04a22c9",
+    "compName": "res1",
+    "typeName": "Resource",
+    "category": "resource",
+    "color": "#4c53e6",
+    "notification": [],
+    "inputData": {
+      "capacity": 1,
+      "default_timeout": 5
+    },
+    "customInput": {
+      "hold_time": {
+        "inputName": "hold_time",
+        "fieldType": "number",
+        "description": "",
+        "required": false,
+        "id": "8cb51fe5-08b6-4c33-ab70-b42f2ce6d695",
+        "visible": true,
+        "defaultValue": 3
+      }
+    },
     "connectors": [
       {
-        "id": "831f60f5-903e-47a6-bd3a-3d7218ef9f65",
-        "name": "example-type",
+        "id": "8f210cbc-fb4b-4f43-9463-c73412f9d1d7",
+        "name": "water_conn",
         "type": [
-          "Example"
+          "Water"
         ],
         "flow": "in",
         "validation": ""
       }
     ],
-    "Runners": [],
+    "Runners": {
+      "run": "\n# u must return input if not the resource process not gonna work\ndef main():\n    print(\"Running main application\")\n    \nif __name__ == \"__main__\":\n    main()",
+      "generator": "def generate_data():\n    print(\"Generating data...\")\n    return {\"status\": \"success\"}",
+      "model": "class Model:\n    def __init__(self):\n        self.name = \"Default Model\"\n        \n    def train(self, data):\n        print(f\"Training {self.name} with data\")\n        \n    def predict(self, input_data):\n        return \"Prediction result\"",
+      "event": "# Event handling functions\n\ndef process_event(event_data):\n    print(\"Processing event data\")\n    return event_data"
+    },
     "GenData": {
       "types": [],
       "config": {

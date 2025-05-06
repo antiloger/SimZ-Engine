@@ -28,6 +28,7 @@ class SimulationBuilder:
         self.runPath = runPath
         self.run_time = run_time
         self.compRegistry: Dict[str, Type[Component]] = registered_components
+        self.components = {}  # Store component instances by their IDs
         self.load()
 
     def load_compStore(self):
@@ -69,19 +70,44 @@ class SimulationBuilder:
         self.load_workflow()
         self.create_logger()
 
+        # Set class-level references for all component types immediately after loading
+        # This ensures the class variables are set before any instances are created
+        for comp_class in self.compRegistry.values():
+            comp_class.set_Gen_ref(self.genState)
+            comp_class.set_workflow(self.workflow)
+            comp_class.set_logger(self.logger)
+
     def build(self):
-        for name, comp in self.compStore.root.items():
-            if comp.category not in self.compRegistry:
-                raise ValueError(f"Component type '{comp.typeName}' not registered.")
-            comp_class = self.compRegistry[comp.category]
-            component = comp_class(
+        # First, ensure the Component class has the necessary references
+        # This is critical to ensure that all components created will have access to these
+        Component.set_Gen_ref(self.genState)
+        Component.set_workflow(self.workflow)
+        Component.set_logger(self.logger)
+
+        # Now build all components
+        for comp_id, comp_data in self.compStore.root.items():
+            if comp_data.category not in self.compRegistry:
+                raise ValueError(
+                    f"Component type '{comp_data.typeName}' not registered."
+                )
+
+            comp_class = self.compRegistry[comp_data.category]
+
+            # Create the component instance
+            component = comp_class.create(
                 env=self.env,
-                name=name,
-                compData=comp,
+                compData=comp_data,
             )
-            component.set_Gen_ref(self.genState)
-            component.set_workflow(self.workflow)
-            component.set_logger(self.logger)
+
+            # Store the component in our local dictionary for easier access
+            self.components[comp_id] = component
+
+            # Debug output to confirm creation
+            print(f"Created component {comp_id} of type {comp_data.category}")
+
+        # Verify that components are properly registered
+        print(f"Registry size after build: {Component.get_registry_size()}")
+        print(f"Registry keys: {Component.get_registry_keys()}")
 
     def pprint_compStore(self):
         for name, comp in self.compStore.root.items():
@@ -95,15 +121,28 @@ class SimulationBuilder:
     def find_root_comps(self) -> list[Component]:
         root_comps = []
         roots = self.workflow.get_roots()
+        print(f"Found root components: {roots}")
+
         for root in roots:
             comp = Component.comp_from_registery(root)
             if comp is None:
-                raise ValueError(f"Component '{root}' not found in component store.")
+                # Try to find it in our local components dictionary as a fallback
+                comp = self.components.get(root)
+                if comp is None:
+                    raise ValueError(
+                        f"Component '{root}' not found in component registry or local components."
+                    )
+                # Re-register it just to be safe
+                Component.registry[root] = comp
+                print(f"Re-registered component {root} in registry")
 
             root_comps.append(comp)
         return root_comps
 
     def start(self):
+        # Before starting, verify registry state
+        print(f"Registry before start: {list(Component.registry.keys())}")
+
         root_comps = self.find_root_comps()
         for comp in root_comps:
             if comp is None:
@@ -119,10 +158,6 @@ compReg = {
 }
 
 
-# run_name = "test_run"
-# project_path = Path("path/to/project")
-# run_path = Path("path/to/run")
-# run_time = None
 def run():
     builder = SimulationBuilder(
         runName="test_run",
@@ -133,5 +168,15 @@ def run():
 
     builder.pprint_compStore()
     builder.build()
+
+    # Check registry after build
     print("Simulation build complete.")
-    print(Component.registry)
+    print(f"Registry contains {Component.get_registry_size()} components")
+    print(f"Registry keys: {Component.get_registry_keys()}")
+
+    # Print the actual registry dictionary to see what's in it
+    registry_dict = {k: v.__class__.__name__ for k, v in Component.registry.items()}
+    print(builder.genState)
+
+    # Optional - start the simulation
+    # builder.start()

@@ -3,16 +3,20 @@ import simpy
 from db import CsvLogger
 from graph import WorkflowGraph
 from kvstorage import KVStorage
-from sim_types import CompDataI, GenContainer, GenTypeState
+from sim_types import CompDataI, GenContainer, GenTypeState, GenTypes, GeneratorList
 from abc import ABC, abstractmethod
 import weakref
 
 
 class Component(ABC):
+    # Define as class variables to be shared across all instances
     genState: GenTypeState
     workflow: WorkflowGraph
-    logger: CsvLogger
+    logger: CsvLogger  # Using WeakValueDictionary to avoid memory leaks - when a component is deleted,
+    # its entry in the registry will be automatically removed
     registry: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+    # Flag to track if class-level resources have been initialized
+    _initialized = False
 
     def __init__(
         self,
@@ -20,9 +24,13 @@ class Component(ABC):
         name: str,
         compData: CompDataI,
     ):
+        # Check if class resources are initialized
+        if not Component._initialized:
+            print("WARNING: Component class resources are not initialized yet!")
+
         self.env = env
         self.name = name
-        # self.component_data = compData
+
         if compData.id is None:
             raise ValueError(
                 "Component 'Resource' requires 'component_data' to be defined."
@@ -35,8 +43,19 @@ class Component(ABC):
         kv_data = compData.get_custom_input()
         self.var = KVStorage(storage=kv_data)
         self.Yieldable = False if compData.Yieldable is None else compData.Yieldable
+        self.run_call_count = 0
+        self.input_count = 0
+        self.actionSet = []
 
+        # Register this component instance in the class registry
+        self._register()
+
+    def _register(self):
+        """Register this component in the class registry."""
         Component.registry[self.compId] = self
+        print(
+            f"Registered component {self.compId} of type {self.__class__.__name__} in registry"
+        )
 
     @classmethod
     @abstractmethod
@@ -51,14 +70,23 @@ class Component(ABC):
     @classmethod
     def set_Gen_ref(cls, gen_ref: GenTypeState):
         cls.genState = gen_ref
+        Component.genState = gen_ref  # Ensure base class has it too
+        Component._initialized = True
+        print(f"Set GenState reference for {cls.__name__}")
 
     @classmethod
     def set_workflow(cls, workflow: WorkflowGraph):
         cls.workflow = workflow
+        Component.workflow = workflow  # Ensure base class has it too
+        Component._initialized = True
+        print(f"Set workflow reference for {cls.__name__}")
 
     @classmethod
     def set_logger(cls, logger: CsvLogger):
         cls.logger = logger
+        Component.logger = logger  # Ensure base class has it too
+        Component._initialized = True
+        print(f"Set logger reference for {cls.__name__}")
 
     @abstractmethod
     def next_wrapper(self):
@@ -66,16 +94,71 @@ class Component(ABC):
 
     @classmethod
     def comp_from_registery(cls, compId: str) -> Optional["Component"]:
-        return Component.registry.get(compId)
+        """Retrieve a component by its ID from the registry."""
+        comp = cls.registry.get(compId)
+        if comp is None:
+            print(
+                f"Component with ID {compId} not found in registry. Registry has {len(cls.registry)} components."
+            )
+            print(f"Available components: {list(cls.registry.keys())}")
+        return comp
+
+    @classmethod
+    def get_registry_size(cls) -> int:
+        """Return the number of components in the registry."""
+        return len(cls.registry)
+
+    @classmethod
+    def get_registry_keys(cls) -> List[str]:
+        """Return a list of all component IDs in the registry."""
+        return list(cls.registry.keys())
+
+    @classmethod
+    def check_registry(cls):
+        """Check and print registry information for debugging."""
+        print(f"Registry contains {len(cls.registry)} components.")
+        print(f"Registry keys: {list(cls.registry.keys())}")
+        print(
+            f"Registry values types: {[type(v).__name__ for v in cls.registry.values()]}"
+        )
+
+    def targetHandlerFind(self, output: GenContainer) -> Optional[str]:
+        types_gen = output.get_name_in_Data()
+        if len(types_gen) == 1:
+            return f"{types_gen[0]}-out"
+        return None
+
+    def getGenType(self, name: str) -> Optional[Dict[str, GenTypes]]:
+        gen_data = self.genState.get_by_name(name)
+        if gen_data is None:
+            print(f"GenType {name} not found in GenState.")
+            return None
+        return gen_data
+
+    def create_default_containter(self, genTypeName) -> GenContainer:
+        gen_data = self.genState.get_by_name(genTypeName)
+        if gen_data is None:
+            print(f"GenType {genTypeName} not found in GenState.")
+            raise ValueError("GenType not found in GenState.")
+
+        return GenContainer(
+            Data=gen_data,
+            targetComp=None,
+            targetHandler=None,
+        )
 
     def _next(self, output: Optional[GenContainer] = None):
         if output is None:
             print("Output is None, cannot proceed.")
             return
         if output.targetComp is None:
-            return
+            output.targetComp = self.compId
+
         if output.targetHandler is None:
-            return
+            str_hand = self.targetHandlerFind(output)
+            if str_hand is None:
+                return
+            output.targetHandler = str_hand
 
         output_list = self.workflow.find_connection_target(
             source_component_id=output.targetComp,
@@ -93,6 +176,10 @@ class Component(ABC):
             handler=output_list[1],
         )
 
+        # Check registry explicitly before proceeding
+        print(
+            f"Looking for component {output_list[0]} in registry with {self.get_registry_size()} components"
+        )
         next_comp_ref = self.comp_from_registery(output_list[0])
         if next_comp_ref is None:
             print(f"Component with ID {output_list[0]} not found in registry.")
@@ -137,9 +224,6 @@ class Component(ABC):
             }
         )
 
-    def set_componentData(self, data: CompDataI):
-        self.component_data = data
-
     def set_next_components(self, next_components: List[str]):
         self.next_components = next_components
 
@@ -170,6 +254,13 @@ class Generator(Component):
             name="Generator",
             compData=compData,
         )
+        genlist = (
+            []
+            if compData.GenData is None or compData.GenData.types is None
+            else compData.GenData.types
+        )
+        self.GenList = self.initGenType(genlist)
+
         self.generated_count = 0
         default_actions = ["GENERATE"]
         self.set_actionSet(default_actions)
@@ -178,6 +269,7 @@ class Generator(Component):
             self.gen_count = row_gencount
         else:
             self.gen_count = None
+        print(f"Generator {self.compId} initialized with gen_count: {self.gen_count}")
 
     @classmethod
     def create(cls, env: simpy.Environment, compData: CompDataI) -> "Generator":
@@ -193,11 +285,29 @@ class Generator(Component):
     def GenContainerBuild(self, input: GenContainer):
         pass
 
+    def initGenType(self, data: List[str]) -> List[GeneratorList]:
+        genTypes = []
+        for i in data:
+            t = GeneratorList(id=i, count=0)
+            genTypes.append(t)
+        return genTypes
+
     def inc_Gen_Count(self):
         self.generated_count += 1
 
     def test_func(self, input: Optional[GenContainer]) -> TypingGen[Any, Any, Any]:
+        genTypes = {}
+        for value in self.GenList:
+            genData = self.genState.get(value.id)
+            genTypes[value.id] = genData
+
+        container = GenContainer(
+            Data=genTypes,
+            targetComp=None,
+            targetHandler=None,
+        )
         yield self.env.timeout(1)
+        return container
 
     def run(self, input: Optional[GenContainer]) -> TypingGen[Any, Any, Any]:
         # infinite or bounded loop
@@ -205,8 +315,9 @@ class Generator(Component):
         while loop is None or loop > 0:
             self.inc_run_call_count()
             self.input_count = getattr(self, "input_count", 0) + 1
-            # always yield so this stays a generator
-            yield self.env.timeout(1)
+
+            # get a new GenContainer from the user's logic
+            output: GenContainer = yield from self.test_func(input=None)
 
             self.log_event(
                 action="GENERATE",
@@ -214,12 +325,8 @@ class Generator(Component):
                     "input_count": self.input_count,
                     "run_count": self.run_call_count,
                 },
-                PDV=None,
+                PDV=output,
             )
-
-            # get a new GenContainer from the user’s logic
-            output: GenContainer = yield from self.test_func(input=None)
-
             # hand it off
             self._next(output)
 
@@ -243,7 +350,7 @@ class Resource(Component):
         self.set_actionSet(default_actions)
 
         # Retrieve and validate the capacity value from component data
-        capacity = self.component_data.get_input_data("capacity")
+        capacity = compData.get_input_data("capacity")
 
         if capacity is None:
             raise ValueError("Component 'Resource' requires 'capacity' to be defined.")
@@ -269,6 +376,7 @@ class Resource(Component):
 
     def test_func(self, input: Optional[GenContainer]) -> TypingGen[Any, Any, Any]:
         yield self.env.timeout(1)
+        return input
 
     def run(self, input: Optional[GenContainer]) -> TypingGen[Any, Any, Any]:
         """
@@ -277,7 +385,7 @@ class Resource(Component):
         inside this fn, user can call the custom code and pass the self to it.
         """
         self.inc_run_call_count()
-        self.input_count += 1
+        self.input_count = getattr(self, "input_count", 0) + 1
 
         # run method for resource
         with self.resource.request() as req:
@@ -302,4 +410,7 @@ class Resource(Component):
             },
             PDV=input,
         )
+        if output is not None and output.targetHandler is not None:
+            b, _ = output.targetHandler.rsplit("-", 1)
+            output.targetHandler = b + "-out"
         self._next(output=output)

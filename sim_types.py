@@ -1,7 +1,8 @@
 # types.py
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, Field, RootModel
+from uuid import uuid4
 
 
 # Placeholder for TimeStepGenConfig (import this or define it as needed)
@@ -38,6 +39,18 @@ class InputFieldFormat(BaseModel):
     options: Optional[Union[List[str], List[int]]] = None
 
 
+class CustomInputField(BaseModel):
+    id: str
+    inputName: str
+    fieldType: FieldType
+    description: Optional[str] = None
+    defaultValue: Union[int, str, bool, List[str], List[int], None]
+    required: Optional[bool] = False
+    validation: Optional[str] = None
+    options: Optional[List[str]] = None
+    visible: Optional[bool] = True
+
+
 # -----------------------------
 # OutputDataFormats
 # -----------------------------
@@ -59,9 +72,33 @@ class ConfigGenerator(BaseModel):
     config: TimeStepGenConfig
 
 
+class GeneratorList(BaseModel):
+    id: str
+    count: int | None
+
+
+class GeneratorListState(BaseModel):
+    id: str
+    count: int | None
+    currntCount: int = 0
+
+
 class DataGenerator(BaseModel):
     config: ConfigGenerator
     types: Optional[List[str]]  # represents TS: string[] | null
+
+    # def getGenState(self) -> List[GeneratorListState]:
+    #     """
+    #     Convert GeneratorList to GeneratorListState.
+    #     """
+    #     return (
+    #         [
+    #             GeneratorListState(id=gen.id, count=gen.count, currntCount=0)
+    #             for gen in self.types
+    #         ]
+    #         if self.types
+    #         else []
+    #     )
 
 
 # -----------------------------
@@ -115,10 +152,11 @@ class RunnerFnType(str, Enum):
     SubProcess = "SubProcess"
 
 
-class RunnerFn(BaseModel):
-    type: RunnerFnType
-    name: str
-    args: DynArray
+class RunnerFile(BaseModel):
+    run: str
+    generator: str
+    model: str
+    event: str
 
 
 # -----------------------------
@@ -134,9 +172,9 @@ class CompDataI(BaseModel):
     # inputData: values can be number, string, bool, list of strings/numbers, or None
     inputData: Dict[str, Union[int, str, bool, List[str], List[int], None]]
     # customInput maps keys to InputFieldFormat instances
-    customInput: Dict[str, InputFieldFormat]
+    customInput: Dict[str, CustomInputField]
     connectors: List[ConnectorData]
-    Runners: List[RunnerFn]
+    Runners: RunnerFile
     GenData: Optional[DataGenerator] = None
     Yieldable: Optional[bool] = None
 
@@ -151,10 +189,21 @@ class CompDataI(BaseModel):
     def get_custom_input(self) -> Dict[str, Any]:
         output_data = {}
         if self.customInput:
-            for key, value in self.customInput.items():
+            for _, value in self.customInput.items():
                 output_data[value.inputName] = value.defaultValue
 
         return output_data
+
+    # def getGenState(self) -> List[GeneratorListState]:
+    #     """
+    #     Convert GeneratorList to GeneratorListState.
+    #     """
+    #     if self.GenData and self.GenData.types:
+    #         return [
+    #             GeneratorListState(id=gen.id, count=gen.count, currntCount=0)
+    #             for gen in self.GenData.types
+    #         ]
+    #     return []
 
 
 class ComponentStore(RootModel[Dict[str, CompDataI]]):
@@ -280,11 +329,15 @@ class GenTypes(BaseModel):
         return self.typeName
 
 
+def genUUIDHEX() -> str:
+    return uuid4().hex
+
+
 # -----------------------------
 # GenContainer
 # -----------------------------
 class GenContainer(BaseModel):
-    containerId: int
+    containerId: str = Field(default_factory=genUUIDHEX)
     Data: Dict[str, GenTypes]
     targetComp: str | None
     targetHandler: str | None
@@ -315,6 +368,18 @@ class GenContainer(BaseModel):
     def set_next_target(self, comp: str, handler: str) -> None:
         self.targetComp = comp
         self.targetHandler = handler
+
+    def get_name_in_Data(self) -> List[str]:
+        """
+        Get the names of all GenTypes instances in the Data dictionary.
+        """
+        return list(self.Data.keys())
+
+    def set_targetHandler(self, targetHandler: str) -> None:
+        """
+        Set the target handler.
+        """
+        self.targetHandler = targetHandler
 
 
 # -----------------------------
@@ -348,6 +413,12 @@ class GenTypeState(RootModel[Dict[str, GenTypes]]):
         else:
             raise KeyError(f"GenType '{type_name}' not found.")
 
+    def get(self, type_name: str) -> Optional[GenTypes]:
+        """
+        Get a GenTypes instance by typeName.
+        """
+        return self.root.get(type_name)
+
     def genType_checker(self, type_name: str, type: GenTypes) -> bool:
         """
         Check if the typeName and genComponentId match.
@@ -359,6 +430,23 @@ class GenTypeState(RootModel[Dict[str, GenTypes]]):
                 and existing_gen_type.genComponentId == type.genComponentId
             )
         return False
+
+    def get_genAttr(self, type_name: str) -> Optional[Dict[str, GenAttributes]]:
+        """
+        Get the GenAttributes of a specific GenTypes instance.
+        """
+        if type_name in self.root:
+            return self.root[type_name].attributes
+        return None
+
+    def get_by_name(self, type_name: str) -> Optional[Dict[str, GenTypes]]:
+        """
+        Get a GenTypes instance by typeName.
+        """
+        for key, value in self.root.items():
+            if value.typeName == type_name:
+                return {key: value}
+        return None
 
 
 class Edge(BaseModel):
