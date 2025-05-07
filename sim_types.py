@@ -381,6 +381,21 @@ class GenContainer(BaseModel):
         """
         self.targetHandler = targetHandler
 
+    def split_at_last_dash(self):
+        # Find the position of the last dash
+        if self.targetHandler is None:
+            return None, None
+        last_dash_pos = self.targetHandler.rfind("-")
+
+        # If a dash was found, split the string
+        if last_dash_pos != -1:
+            prefix = self.targetHandler[:last_dash_pos]
+            suffix = self.targetHandler[last_dash_pos + 1 :]
+            return prefix, suffix
+
+        # If no dash is found, return the original text and empty string
+        return None, None
+
 
 # -----------------------------
 # GenTypeState

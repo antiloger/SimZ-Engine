@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, List, Generator as TypingGen
 import simpy
+from codeExec import CodeExec
 from db import CsvLogger
 from graph import WorkflowGraph
 from kvstorage import KVStorage
@@ -46,7 +47,7 @@ class Component(ABC):
         self.run_call_count = 0
         self.input_count = 0
         self.actionSet = []
-
+        self.executor = CodeExec(code=compData.Runners)
         # Register this component instance in the class registry
         self._register()
 
@@ -204,6 +205,11 @@ class Component(ABC):
 
     def get_run_call_count(self) -> int:
         return self.run_call_count
+
+    def input_processing(self, input: GenContainer):
+        t, d = input.split_at_last_dash()
+        if t is None or d is None:
+            raise ValueError("Invalid input format. Expected 'type-data'.")
 
     def log_event(
         self,
